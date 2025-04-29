@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+
+    <!-- Login via credentials -->
+    <form method="POST" action="/login">
+        <input type="email" name="email" placeholder="Email" required><br><br>
+        <input type="password" name="password" placeholder="Password" required><br><br>
+        <button type="submit">Login with Credentials</button>
+    </form>
+
+    <hr style="margin: 20px 0;">
+
+    <!-- Login via QR -->
+    <form action="/qr" method="GET">
+        <button type="submit">Login via QR Code</button>
+    </form>
+
+</body>
+</html>

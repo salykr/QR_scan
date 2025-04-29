@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home</title>
+</head>
+<body>
+    <h2>Welcome, {{ user }}</h2>
+    <p>You are logged in!</p>
+
+    <a href="/qr">Login on another device (show QR)</a>
+    <br><br>
+
+    <form action="/scan" method="GET">
+        <button type="submit">Link a Device (Scan QR)</button>
+    </form>
+</body>
+</html>
