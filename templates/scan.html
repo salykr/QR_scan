@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Scan QR Code</title>
+    <title>Scan QR Code to Link Device</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -9,53 +9,59 @@
     <div id="reader" style="width: 300px;"></div>
     <p id="scan-result" style="margin-top: 15px;"></p>
 
-    <form id="qr-form" method="POST" action="/validate-login" style="display: none;">
-        <input type="hidden" name="scanned_qr" id="scanned_qr">
-        <button type="submit">Validate</button>
-    </form>
-
     <script>
         const resultElement = document.getElementById('scan-result');
-        const form = document.getElementById('qr-form');
-        const hiddenInput = document.getElementById('scanned_qr');
+        let html5QrCode;
+
+        async function sendToServer(decodedText) {
+            try {
+                const response = await fetch("/validate-login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded"
+                    },
+                    body: new URLSearchParams({
+                        scanned_qr: decodedText
+                    })
+                });
+
+                if (response.ok) {
+                    window.location.href = "/home";  // redirect to home after success
+                } else {
+                    const text = await response.text();
+                    alert("Validation failed:\n" + text);
+                }
+            } catch (err) {
+                alert("Error sending QR data to server.");
+            }
+        }
 
         function onScanSuccess(decodedText, decodedResult) {
             resultElement.innerText = "Scanned: " + decodedText;
-
-            // Set the hidden input value and show the form
-            hiddenInput.value = decodedText;
-            form.style.display = "block";
-
-            // Stop scanning after successful scan
-            html5QrCode.stop();
+            html5QrCode.stop();  // stop scanner
+            sendToServer(decodedText);  // send to Flask backend immediately
         }
-
-        let html5QrCode;
 
         async function startScanner() {
             html5QrCode = new Html5Qrcode("reader");
 
             const devices = await Html5Qrcode.getCameras();
-
             if (devices && devices.length) {
-                let backCamera = devices.find(device => device.label.toLowerCase().includes('back'));
-
-                let cameraId = backCamera ? backCamera.id : devices[0].id; // fallback if no "back" camera labeled
+                let backCamera = devices.find(device =>
+                    device.label.toLowerCase().includes('back')
+                );
+                let cameraId = backCamera ? backCamera.id : devices[0].id;
 
                 html5QrCode.start(
                     cameraId,
-                    {
-                        fps: 10,
-                        qrbox: 250
-                    },
+                    { fps: 10, qrbox: 250 },
                     onScanSuccess
                 );
             } else {
-                alert("No camera found!");
+                alert("No camera found.");
             }
         }
 
-        // Start scanning when page loads
         window.onload = startScanner;
     </script>
 </body>
