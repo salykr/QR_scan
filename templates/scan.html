@@ -1,68 +1,150 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Scan QR Code to Link Device</title>
+    <title>Scan QR Code</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        #reader {
+            width: 300px !important;
+            height: 300px !important;
+            margin: 0 auto !important;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #reader video {
+            width: 300px !important;
+            height: 300px !important;
+            object-fit: cover;
+        }
+
+        #scan-result {
+            margin-top: 20px;
+            color: #666;
+            padding: 10px;
+        }
+
+        /* QR Scanner UI adjustments */
+        #reader__dashboard_section_csr {
+            margin: 0 !important;
+            padding: 0 !important;
+            text-align: center !important;
+        }
+
+        #reader__dashboard_section_csr button {
+            padding: 8px 15px !important;
+            font-size: 14px !important;
+        }
+
+        #reader__scan_region {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        #reader__dashboard_section_swaplink {
+            display: none !important;
+        }
+
+        /* Force center the scan region */
+        #reader__scan_region > * {
+            margin: 0 auto !important;
+        }
+
+        /* Center the camera selection */
+        #reader__camera_selection {
+            margin: 0 auto !important;
+            text-align: center !important;
+        }
+    </style>
 </head>
 <body>
-    <h2>Scan QR Code to Link Device</h2>
-    <div id="reader" style="width: 300px;"></div>
-    <p id="scan-result" style="margin-top: 15px;"></p>
+    <div class="container">
+        <h2>Scan QR Code to Link Device</h2>
+        <div id="reader"></div>
+        <p id="scan-result"></p>
+    </div>
 
     <script>
         const resultElement = document.getElementById('scan-result');
-        let html5QrCode;
 
-        async function sendToServer(decodedText) {
+        async function validateQRCode(decodedText) {
             try {
-                const response = await fetch("/validate-login", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
-                    },
-                    body: new URLSearchParams({
-                        scanned_qr: decodedText
-                    })
+                const formData = new FormData();
+                formData.append('scanned_qr', decodedText);
+
+                const response = await fetch('/validate-login', {
+                    method: 'POST',
+                    body: formData
                 });
 
-                if (response.ok) {
-                    window.location.href = "/home";  // redirect to home after success
-                } else {
-                    const text = await response.text();
-                    alert("Validation failed:\n" + text);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Validation failed');
                 }
-            } catch (err) {
-                alert("Error sending QR data to server.");
+
+                if (data.status === 'success') {
+                    resultElement.innerText = "Success! You can close this window. The other device will be logged in with your account.";
+                } else {
+                    throw new Error(data.message || 'Validation failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultElement.innerText = `Error: ${error.message}`;
+                // Re-enable scanning on error
+                html5QrcodeScanner.render(onScanSuccess);
             }
         }
 
         function onScanSuccess(decodedText, decodedResult) {
-            resultElement.innerText = "Scanned: " + decodedText;
-            html5QrCode.stop();  // stop scanner
-            sendToServer(decodedText);  // send to Flask backend immediately
+            resultElement.innerText = "QR Code scanned! Validating...";
+            
+            // Stop scanning after successful scan
+            html5QrcodeScanner.clear();
+            
+            // Validate the QR code
+            validateQRCode(decodedText);
         }
 
-        async function startScanner() {
-            html5QrCode = new Html5Qrcode("reader");
-
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length) {
-                let backCamera = devices.find(device =>
-                    device.label.toLowerCase().includes('back')
-                );
-                let cameraId = backCamera ? backCamera.id : devices[0].id;
-
-                html5QrCode.start(
-                    cameraId,
-                    { fps: 10, qrbox: 250 },
-                    onScanSuccess
-                );
-            } else {
-                alert("No camera found.");
+        const html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", 
+            { 
+                fps: 10, 
+                qrbox: 250  // Make the scanning area larger
             }
-        }
-
-        window.onload = startScanner;
+        );
+        html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
 </html>

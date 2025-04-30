@@ -131,6 +131,8 @@
             // Small delay to ensure library is loaded
             setTimeout(() => {
                 fetchNewLoginSession();
+                // Add back the 30-second refresh interval
+                setInterval(fetchNewLoginSession, 30000); // refresh every 30 sec
             }, 1000);
         });
     </script>

@@ -10,7 +10,7 @@ app.secret_key = 'myverysecretkeyforpoc'  # Needed for session management
 login_sessions = {}
 
 # Temporary fake users
-fake_users = {
+fake_users = { 
     'test@example.com': 'test',
     'user@example.com': 'user'
 }
