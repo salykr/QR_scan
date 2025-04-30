@@ -50,17 +50,48 @@
             color: #666;
             font-size: 14px;
         }
+
+        .countdown {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .countdown-timer {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4a90e2;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Scan this QR to log in</h2>
         <div id="qrcode"></div>
+        <div class="countdown">
+            <div>This QR code will expire in:</div>
+            <div class="countdown-timer" id="countdown">30</div>
+        </div>
         <p id="sessionInfo"></p>
     </div>
 
     <script>
         let refreshInterval;
+        let countdownInterval;
+        let timeLeft = 30;
+
+        function updateCountdown() {
+            const countdownElement = document.getElementById('countdown');
+            countdownElement.textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                timeLeft = 30;
+            } else {
+                timeLeft--;
+            }
+        }
 
         async function checkLoginStatus(loginSessionId) {
             try {
@@ -70,6 +101,7 @@
                 if (data.validated) {
                     // Clear the refresh interval
                     clearInterval(refreshInterval);
+                    clearInterval(countdownInterval);
                     
                     // Show success message and redirect
                     document.getElementById('sessionInfo').innerText = 'Login validated! Redirecting...';
@@ -85,13 +117,13 @@
                 const response = await fetch('/start-login');
                 const data = await response.json();
 
-                if (!data.loginSessionId || !data.secret) {
+                if (!data.loginSessionId || !data.totp) {
                     throw new Error('Invalid response from server');
                 }
 
                 const sessionData = {
                     loginSessionId: data.loginSessionId,
-                    secret: data.secret
+                    totp: data.totp
                 };
 
                 // Generate QR
@@ -112,6 +144,11 @@
                     width: 200,
                     height: 200
                 });
+
+                // Reset and start countdown
+                timeLeft = 30;
+                clearInterval(countdownInterval);
+                countdownInterval = setInterval(updateCountdown, 1000);
 
                 // Clear any existing interval
                 if (refreshInterval) {

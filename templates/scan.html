@@ -115,7 +115,11 @@
                 }
 
                 if (data.status === 'success') {
-                    resultElement.innerText = "Success! You can close this window. The other device will be logged in with your account.";
+                    resultElement.innerText = "Success! Redirecting to home page...";
+                    // Redirect to home page after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/home';
+                    }, 1500);
                 } else {
                     throw new Error(data.message || 'Validation failed');
                 }

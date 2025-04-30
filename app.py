@@ -6,14 +6,13 @@ import json
 app = Flask(__name__)
 app.secret_key = 'myverysecretkeyforpoc'  # Needed for session management
 
-# In-memory storage for login sessions
 login_sessions = {}
 
-# Temporary fake users
 fake_users = { 
-    'test@example.com': 'test',
+    'saly@example.com': 'saly',
     'user@example.com': 'user'
 }
+
 @app.route('/validate-login', methods=['POST'])
 def validate_login():
     if 'user' not in session:
@@ -33,21 +32,16 @@ def validate_login():
             return jsonify({'status': 'error', 'message': 'Invalid QR code data format'}), 400
 
         login_id = parsed.get('loginSessionId')
-        secret = parsed.get('secret')
+        scanned_totp = parsed.get('totp')
 
-        if not login_id or not secret:
+        if not login_id or not scanned_totp:
             return jsonify({'status': 'error', 'message': 'Missing required fields in QR code data'}), 400
 
         if login_id not in login_sessions:
             return jsonify({'status': 'error', 'message': 'Invalid login session'}), 400
 
-        stored_secret = login_sessions[login_id].get('secret')
-        if not stored_secret or stored_secret != secret:
-            return jsonify({'status': 'error', 'message': 'Secret mismatch'}), 403
-
-        # Validate TOTP
-        totp = pyotp.TOTP(secret)
-        if not totp.verify(totp.now()):
+        stored_totp = login_sessions[login_id].get('totp')
+        if not stored_totp or stored_totp != scanned_totp:
             return jsonify({'status': 'error', 'message': 'TOTP mismatch'}), 403
 
         # Store the scanning user's info in the login session
@@ -64,21 +58,27 @@ def validate_login():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Error: {str(e)}'}), 400
 
+
 @app.route('/start-login', methods=['GET'])
 def start_login():
     secret = pyotp.random_base32()
     login_session_id = str(uuid.uuid4())
+    
+    # Generate TOTP using the secret
+    totp = pyotp.TOTP(secret)
+    current_totp = totp.now()
 
     login_sessions[login_session_id] = {
-        'secret': secret,
+        'totp': current_totp,  # Store the TOTP value instead of secret
         'validated': False
     }
 
     return jsonify({
         'loginSessionId': login_session_id,
-        'secret': secret
+        'totp': current_totp  # Send TOTP instead of secret
     })
 
+#login with credentials , just checks the input
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -108,7 +108,7 @@ def phone_b():
 def scan_qr_page():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template('scan.html')  # to be created next
+    return render_template('scan.html')
 
 @app.route('/check-login-status/<login_id>')
 def check_login_status(login_id):
